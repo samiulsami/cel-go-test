@@ -1,24 +1,30 @@
 package main
 
 import (
-	"encoding/json"
-	"log"
+	"fmt"
+	"reflect"
 
+	"github.com/golang/glog"
 	"github.com/google/cel-go/cel"
+	"github.com/google/cel-go/common/types/ref"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/structpb"
 	"k8s.io/klog/v2"
 )
 
 func main() {
-	expression := `conditions.filter(c, c.status == "True")`
+	expression := `status.phase == "Running"`
 
 	env, err := cel.NewEnv(
-		cel.Variable("conditions", cel.ListType(cel.MapType(cel.StringType, cel.DynType))),
+		// cel.Variable("conditions", cel.ListType(cel.MapType(cel.StringType, cel.DynType))),
+		cel.Variable("status", cel.MapType(cel.StringType, cel.DynType)),
 	)
 	if err != nil {
 		klog.Fatalf("failed to create CEL environment: %v", err)
 	}
 
-	ast, iss := env.Compile(expression)
+	ast, iss := env.Parse(expression)
 	if iss != nil && iss.Err() != nil {
 		klog.Fatalf("failed to compile CEL expression: %v", iss.Err())
 	}
@@ -28,24 +34,45 @@ func main() {
 		klog.Fatalf("failed to create CEL program: %v", err)
 	}
 
-	out, details, err := program.Eval(getsampleObj())
+	out, _, err := program.Eval(getsampleObj2())
 	if err != nil {
-		klog.Fatalf("failed to evaluate CEL expression: %v", err)
+		klog.Fatalf("failed to evaluate CEL program: %v", err)
 	}
+	fmt.Println(valueToJSON(out))
+}
 
-	prettyJSON, err := json.MarshalIndent(out.Value(), "", "  ")
-	if err != nil {
-		klog.Fatalf("failed to marshal CEL expression result: %v", err)
+func getsampleObj2() map[string]interface{} {
+	return map[string]interface{}{
+		"components": map[string]interface{}{
+			"test1": map[string]interface{}{
+				"status": map[string]interface{}{
+					"phase": "Running",
+				},
+			},
+			"test2": map[string]interface{}{
+				"status": map[string]interface{}{
+					"phase": "Running",
+				},
+			},
+			"test3": map[string]interface{}{
+				"status": map[string]interface{}{
+					"phase": "Stopped",
+				},
+			},
+			"test4": map[string]interface{}{
+				"status": map[string]interface{}{
+					"phase": "Stopped",
+				},
+			},
+		},
 	}
-	log.Println(string(prettyJSON))
-
-	klog.Infof("CEL expression result: %s", out.Value())
-
-	klog.Infof("CEL expression details: %v", details)
 }
 
 func getsampleObj() map[string]interface{} {
 	return map[string]interface{}{
+		"status": map[string]interface{}{
+			"phase": "Running",
+		},
 		"conditions": []map[string]interface{}{
 			{
 				"lastTransitionTime": "2024-10-25T09:22:51Z",
@@ -89,4 +116,17 @@ func getsampleObj() map[string]interface{} {
 		"observedGeneration": 2,
 		"phase":              "Ready",
 	}
+}
+
+func valueToJSON(val ref.Val) string {
+	v, err := val.ConvertToNative(reflect.TypeOf(&structpb.Value{}))
+	if err != nil {
+		glog.Exit(err)
+	}
+	marshaller := protojson.MarshalOptions{Indent: "    "}
+	bytes, err := marshaller.Marshal(v.(proto.Message))
+	if err != nil {
+		glog.Exit(err)
+	}
+	return string(bytes)
 }

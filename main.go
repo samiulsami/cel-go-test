@@ -7,6 +7,7 @@ import (
 	"github.com/golang/glog"
 	"github.com/google/cel-go/cel"
 	"github.com/google/cel-go/common/types/ref"
+	"github.com/google/cel-go/ext"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
@@ -14,11 +15,12 @@ import (
 )
 
 func main() {
-	expression := `status.phase == "Running"`
+	expression := `components.transformMap(name, c, c.status.phase=='Running', c)`
 
 	env, err := cel.NewEnv(
 		// cel.Variable("conditions", cel.ListType(cel.MapType(cel.StringType, cel.DynType))),
-		cel.Variable("status", cel.MapType(cel.StringType, cel.DynType)),
+		// cel.Variable("status", cel.MapType(cel.StringType, cel.DynType)),
+		ext.TwoVarComprehensions(),
 	)
 	if err != nil {
 		klog.Fatalf("failed to create CEL environment: %v", err)

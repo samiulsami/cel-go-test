@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	expression := `components.transformMap(name, c, c.status.phase=='Running', c)`
+	expression := `components.transformList(ca, c, c.status.phase=='Running', c)`
 
 	env, err := cel.NewEnv(
 		// cel.Variable("conditions", cel.ListType(cel.MapType(cel.StringType, cel.DynType))),
@@ -41,83 +41,6 @@ func main() {
 		klog.Fatalf("failed to evaluate CEL program: %v", err)
 	}
 	fmt.Println(valueToJSON(out))
-}
-
-func getsampleObj2() map[string]interface{} {
-	return map[string]interface{}{
-		"components": map[string]interface{}{
-			"test1": map[string]interface{}{
-				"status": map[string]interface{}{
-					"phase": "Running",
-				},
-			},
-			"test2": map[string]interface{}{
-				"status": map[string]interface{}{
-					"phase": "Running",
-				},
-			},
-			"test3": map[string]interface{}{
-				"status": map[string]interface{}{
-					"phase": "Stopped",
-				},
-			},
-			"test4": map[string]interface{}{
-				"status": map[string]interface{}{
-					"phase": "Stopped",
-				},
-			},
-		},
-	}
-}
-
-func getsampleObj() map[string]interface{} {
-	return map[string]interface{}{
-		"status": map[string]interface{}{
-			"phase": "Running",
-		},
-		"conditions": []map[string]interface{}{
-			{
-				"lastTransitionTime": "2024-10-25T09:22:51Z",
-				"message":            "The KubeDB operator has started the provisioning of MongoDB: monitoring/mongodb",
-				"reason":             "DatabaseProvisioningStartedSuccessfully",
-				"status":             "True",
-				"type":               "ProvisioningStarted",
-			},
-			{
-				"lastTransitionTime": "2024-11-07T11:20:14Z",
-				"message":            "All desired replicas are ready.",
-				"reason":             "AllReplicasReady",
-				"status":             "True",
-				"type":               "ReplicaReady",
-			},
-			{
-				"lastTransitionTime": "2024-11-07T11:20:45Z",
-				"message":            "The MongoDB: monitoring/mongodb is accepting client requests.",
-				"observedGeneration": 2,
-				"reason":             "DatabaseAcceptingConnectionRequest",
-				"status":             "True",
-				"type":               "AcceptingConnection",
-			},
-			{
-				"lastTransitionTime": "2024-11-07T11:20:45Z",
-				"message":            "The MongoDB: monitoring/mongodb is ready.",
-				"observedGeneration": 2,
-				"reason":             "ReadinessCheckSucceeded",
-				"status":             "True",
-				"type":               "Ready",
-			},
-			{
-				"lastTransitionTime": "2024-10-25T09:23:23Z",
-				"message":            "The MongoDB: monitoring/mongodb is successfully provisioned.",
-				"observedGeneration": 2,
-				"reason":             "DatabaseSuccessfullyProvisioned",
-				"status":             "True",
-				"type":               "Provisioned",
-			},
-		},
-		"observedGeneration": 2,
-		"phase":              "Ready",
-	}
 }
 
 func valueToJSON(val ref.Val) string {
